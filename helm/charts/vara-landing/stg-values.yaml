@@ -1,0 +1,22 @@
+# Staging values for vara-landing
+# Used for pre-production testing
+
+components:
+  app:
+    image: "ghcr.io/example-org/vara-landing-app"
+    tag: "staging-abc1234-20251215143300"
+    
+    # Single replica for staging
+    replicas: 1
+    
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    
+    ingress:
+      root:
+        host: staging.example.com

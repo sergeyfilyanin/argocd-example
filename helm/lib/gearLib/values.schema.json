@@ -1,0 +1,377 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/gearlib-values.schema.json",
+  "title": "gearLib Helm Chart Values",
+  "description": "JSON Schema for validating gearLib Helm chart values",
+  "type": "object",
+  "properties": {
+    "environment": {
+      "type": "string",
+      "enum": ["dev", "stg", "prod"],
+      "description": "Deployment environment"
+    },
+    "global": {
+      "type": "object",
+      "properties": {
+        "imagePullSecrets": {
+          "type": "string",
+          "description": "Base64-encoded Docker registry credentials"
+        }
+      }
+    },
+    "components": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/component"
+      },
+      "description": "Map of component definitions"
+    }
+  },
+  "required": ["environment", "components"],
+  "$defs": {
+    "component": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable this component"
+        },
+        "deployKind": {
+          "type": "string",
+          "enum": ["Deployment", "StatefulSet"],
+          "description": "Kubernetes workload type"
+        },
+        "image": {
+          "type": "string",
+          "pattern": "^[a-z0-9./-]+$",
+          "description": "Container image repository"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Container image tag"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 1,
+          "description": "Number of pod replicas"
+        },
+        "imagePullPolicy": {
+          "type": "string",
+          "enum": ["Always", "IfNotPresent", "Never"],
+          "default": "IfNotPresent"
+        },
+        "resources": {
+          "$ref": "#/$defs/resources"
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/servicePort"
+          }
+        },
+        "ingress": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/ingressConfig"
+          }
+        },
+        "autoscaling": {
+          "$ref": "#/$defs/autoscaling"
+        },
+        "pdb": {
+          "$ref": "#/$defs/pdb"
+        },
+        "networkPolicy": {
+          "$ref": "#/$defs/networkPolicy"
+        },
+        "securityContext": {
+          "$ref": "#/$defs/securityContext"
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Environment variables (stored as Secrets)"
+        },
+        "configMaps": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/configMapMount"
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/secretMount"
+          }
+        },
+        "persistentVolumes": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/persistentVolume"
+          }
+        },
+        "dependencies": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/dependency"
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "args": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "workingDir": {
+          "type": "string"
+        },
+        "startupProbe": {
+          "$ref": "#/$defs/probe"
+        },
+        "readinessProbe": {
+          "$ref": "#/$defs/probe"
+        },
+        "livenessProbe": {
+          "$ref": "#/$defs/probe"
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 60
+        },
+        "restartPolicy": {
+          "type": "string",
+          "enum": ["Always", "OnFailure", "Never"],
+          "default": "Always"
+        }
+      },
+      "required": ["deployKind", "image", "tag"],
+      "if": {
+        "properties": {
+          "enabled": { "const": true }
+        }
+      },
+      "then": {
+        "required": ["deployKind", "image", "tag"]
+      }
+    },
+    "resources": {
+      "type": "object",
+      "properties": {
+        "requests": {
+          "type": "object",
+          "properties": {
+            "cpu": { "type": "string", "pattern": "^[0-9]+m?$" },
+            "memory": { "type": "string", "pattern": "^[0-9]+(Mi|Gi|Ki)$" }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "cpu": { "type": "string", "pattern": "^[0-9]+m?$" },
+            "memory": { "type": "string", "pattern": "^[0-9]+(Mi|Gi|Ki)$" }
+          }
+        }
+      }
+    },
+    "servicePort": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "protocol": {
+          "type": "string",
+          "enum": ["TCP", "UDP"],
+          "default": "TCP"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["ClusterIP", "NodePort", "LoadBalancer"],
+          "default": "ClusterIP"
+        },
+        "monitoring": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "path": { "type": "string", "default": "/metrics" },
+            "interval": { "type": "string", "default": "15s" },
+            "scheme": { "type": "string", "enum": ["http", "https"] }
+          }
+        }
+      },
+      "required": ["port"]
+    },
+    "ingressConfig": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "format": "hostname"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "pathType": { 
+                "type": "string",
+                "enum": ["Prefix", "Exact", "ImplementationSpecific"],
+                "default": "Prefix"
+              },
+              "port": { "type": "string" }
+            },
+            "required": ["path", "port"]
+          }
+        }
+      },
+      "required": ["host", "paths"]
+    },
+    "autoscaling": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "minReplicas": { "type": "integer", "minimum": 1, "default": 1 },
+        "maxReplicas": { "type": "integer", "minimum": 1, "default": 10 },
+        "CPUUtilization": { "type": "integer", "minimum": 1, "maximum": 100, "default": 80 },
+        "MemoryUtilization": { "type": "integer", "minimum": 1, "maximum": 100, "default": 80 }
+      }
+    },
+    "pdb": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "minAvailable": { 
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "string", "pattern": "^[0-9]+%$" }
+          ]
+        },
+        "maxUnavailable": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "string", "pattern": "^[0-9]+%$" }
+          ]
+        },
+        "unhealthyPodEvictionPolicy": {
+          "type": "string",
+          "enum": ["IfHealthyBudget", "AlwaysAllow"]
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "allowFromSameNamespace": { "type": "boolean", "default": true },
+        "allowToSameNamespace": { "type": "boolean", "default": true },
+        "allowExternalHTTPS": { "type": "boolean", "default": false },
+        "additionalIngress": { "type": "array" },
+        "additionalEgress": { "type": "array" }
+      }
+    },
+    "securityContext": {
+      "type": "object",
+      "properties": {
+        "runAsUser": { "type": "integer", "minimum": 0 },
+        "runAsGroup": { "type": "integer", "minimum": 0 },
+        "runAsNonRoot": { "type": "boolean", "default": true },
+        "readOnlyRootFilesystem": { "type": "boolean", "default": false },
+        "allowPrivilegeEscalation": { "type": "boolean", "default": false },
+        "seccompProfileType": { 
+          "type": "string",
+          "enum": ["RuntimeDefault", "Localhost", "Unconfined"],
+          "default": "RuntimeDefault"
+        }
+      }
+    },
+    "configMapMount": {
+      "type": "object",
+      "properties": {
+        "source": { "type": "string" },
+        "mountPath": { "type": "string" },
+        "readOnly": { "type": "boolean", "default": true }
+      },
+      "required": ["source", "mountPath"]
+    },
+    "secretMount": {
+      "type": "object",
+      "properties": {
+        "source": { "type": "string" },
+        "mountPath": { "type": "string" },
+        "readOnly": { "type": "boolean", "default": true }
+      },
+      "required": ["source", "mountPath"]
+    },
+    "persistentVolume": {
+      "type": "object",
+      "properties": {
+        "size": { "type": "string", "pattern": "^[0-9]+(Mi|Gi|Ti)$" },
+        "storageClass": { "type": "string" },
+        "mountPath": { "type": "string" },
+        "accessMode": {
+          "type": "string",
+          "enum": ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany"],
+          "default": "ReadWriteOnce"
+        },
+        "readOnly": { "type": "boolean", "default": false }
+      },
+      "required": ["size", "storageClass", "mountPath"]
+    },
+    "dependency": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["pod", "service", "job"],
+          "description": "Type of resource to wait for"
+        }
+      },
+      "required": ["type"]
+    },
+    "probe": {
+      "type": "object",
+      "properties": {
+        "httpGet": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string" },
+            "port": { "oneOf": [{ "type": "integer" }, { "type": "string" }] },
+            "scheme": { "type": "string", "enum": ["HTTP", "HTTPS"] }
+          }
+        },
+        "tcpSocket": {
+          "type": "object",
+          "properties": {
+            "port": { "oneOf": [{ "type": "integer" }, { "type": "string" }] }
+          }
+        },
+        "exec": {
+          "type": "object",
+          "properties": {
+            "command": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "initialDelaySeconds": { "type": "integer", "minimum": 0 },
+        "periodSeconds": { "type": "integer", "minimum": 1 },
+        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+        "successThreshold": { "type": "integer", "minimum": 1 },
+        "failureThreshold": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}
+

@@ -1,0 +1,7 @@
+components:
+  app:
+    image: ""
+    tag: ""
+    ingress:
+      root:
+        host: www.example.com

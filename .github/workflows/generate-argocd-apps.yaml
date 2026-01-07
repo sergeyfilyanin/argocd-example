@@ -1,0 +1,89 @@
+name: Generate ArgoCD Applications
+
+on:
+  push:
+    paths:
+      - '.github/workflows/generate-argocd-apps.yaml'
+      - 'etc/generate_applications.py'
+      - 'applications.yaml'
+      - 'environments/**'
+      - 'helm/**'
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruyaml
+
+      - name: Generate ArgoCD Application manifests
+        run: python etc/generate_applications.py
+
+      - name: Commit and push generated manifests
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/
+          git diff --quiet && git diff --staged --quiet || git commit -m "🤖 Auto-generate ArgoCD app manifests"
+          git push
+
+  sync-and-wait:
+    needs: [generate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install ArgoCD CLI
+        run: |
+          sudo wget -q https://${{ secrets.ARGOCD_SERVER }}/download/argocd-linux-amd64 -O /usr/bin/argocd
+          sudo chmod +x /usr/bin/argocd
+
+      - name: Login to ArgoCD
+        run: |
+          argocd login ${{ secrets.ARGOCD_SERVER }} \
+            --username ${{ secrets.ARGOCD_USER }} \
+            --password ${{ secrets.ARGOCD_PASSWORD }} \
+            --grpc-web
+
+      - name: ArgoCD refresh
+        run: |
+          argocd app get apps \
+            --hard-refresh \
+            --grpc-web
+
+      - name: Wait for ArgoCD App to Sync & Healthy
+        run: |
+          argocd app wait apps \
+            --sync \
+            --health \
+            --timeout 600
+
+  notify-on-failure:
+    needs: [generate, sync-and-wait]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify on Failure
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_DEVOPS_CHAT }}
+          token: ${{ secrets.TELEGRAM_DEVOPS_TOKEN }}
+          format: markdown
+          disable_web_page_preview: true
+          message: |
+            Status: 🔥  
+            Description: Generate ArgoCD Apps Failure*  
+            Labels:  
+            \- BRANCH: `${{ github.ref_name }}`  
+            \- COMMIT: `${{ github.sha }}`  
+            \- ACTOR: `${{ github.actor }}`  
+            [Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})  

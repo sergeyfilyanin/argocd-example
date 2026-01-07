@@ -1,0 +1,10 @@
+# Global Helm values shared across all charts
+# IMPORTANT: Sensitive values should be managed via External Secrets Operator,
+# Sealed Secrets, or SOPS - never commit real credentials to git!
+
+global:
+  # Base64-encoded Docker registry credentials
+  # In production, inject via ArgoCD secret management or External Secrets
+  # Example format for .dockerconfigjson:
+  # {"auths":{"ghcr.io":{"username":"<USERNAME>","password":"<PAT_TOKEN>","email":"<EMAIL>","auth":"<BASE64>"}}}
+  imagePullSecrets: "<BASE64_ENCODED_DOCKER_CONFIG_JSON>"  # Inject via secret management

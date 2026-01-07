@@ -1,0 +1,23 @@
+# Defaults
+
+components:
+  app:
+    enabled: true
+    deployKind: Deployment
+    image: ""
+    tag: ""
+    service:
+      http:
+        port: 3000
+    ingress:
+      root:
+        host: ""
+        annotations:
+          kubernetes.io/ingress.class: nginx
+        paths:
+          - path: /
+            port: http
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 10

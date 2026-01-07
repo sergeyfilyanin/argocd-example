@@ -1,0 +1,7 @@
+components:
+  app:
+    image: "ghcr.io/xxx/vara-wiki/vara-wiki-app"
+    tag: "staging-49aa3a7"
+    ingress:
+      root:
+        host: www.example.com

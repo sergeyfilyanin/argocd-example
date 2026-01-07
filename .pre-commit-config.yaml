@@ -1,0 +1,77 @@
+# Pre-commit hooks for ArgoCD repository
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+# Docs: https://pre-commit.com/
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.tpl$'
+      - id: end-of-file-fixer
+        exclude: '\.tpl$'
+      - id: check-yaml
+        args: ['--unsafe']  # Allow custom YAML tags
+        exclude: 'templates/.*\.yaml$'
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'master']
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: ['-c', '.yamllint.yaml']
+        exclude: 'templates/.*\.yaml$'
+
+  # Helm chart linting
+  - repo: https://github.com/gruntwork-io/pre-commit
+    rev: v0.1.23
+    hooks:
+      - id: helmlint
+
+  # Secret detection
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: '(\.lock$|\.tpl$)'
+
+  # Python linting (for generate_applications.py)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.9
+    hooks:
+      - id: ruff
+        args: ['--fix']
+      - id: ruff-format
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        args: ['--fix']
+
+  # Kubernetes manifest validation
+  - repo: https://github.com/yannh/kubeconform
+    rev: v0.6.4
+    hooks:
+      - id: kubeconform
+        args:
+          - '-summary'
+          - '-skip=Application'  # Skip ArgoCD CRDs
+        files: '^apps/.*\.yaml$'
+
+# CI-only hooks (not run locally by default)
+ci:
+  autofix_commit_msg: 'style: auto-fix by pre-commit hooks'
+  autoupdate_commit_msg: 'chore: update pre-commit hooks'
+

@@ -1,0 +1,48 @@
+vpn:
+  dev: false
+  stg: false
+  prod: false
+vpnui:
+  dev: false
+  stg: false
+  prod: false
+telemetry:
+  dev: false
+  stg: false
+  prod: true
+whitepaper:
+  dev: false
+  stg: false
+  prod: true
+whitepaper-gear-exe:
+  dev: false
+  stg: false
+  prod: true
+varathon:
+  dev: false
+  stg: false
+  prod: true
+gear-house:
+  dev: false
+  stg: false
+  prod: false
+sails-tutorials:
+  dev: false
+  stg: false
+  prod: true
+gear-landing:
+  dev: false
+  stg: false
+  prod: true
+vara-landing:
+  dev: false
+  stg: true
+  prod: true
+vara-wiki:
+  dev: false
+  stg: false
+  prod: true
+vara-bot-reporter:
+  dev: false
+  stg: false
+  prod: true

@@ -1,0 +1,24 @@
+apiVersion: v2
+name: vara-landing
+description: Vara Network main landing page application
+type: application
+version: 1.0.0
+
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com
+
+sources:
+  - https://github.com/example-org/vara-network-site
+
+dependencies:
+  - name: gearLib
+    repository: file://../../lib/gearLib
+    version: 1.0.0
+
+# Application metadata
+appVersion: "1.0.0"
+keywords:
+  - landing
+  - vara
+  - web

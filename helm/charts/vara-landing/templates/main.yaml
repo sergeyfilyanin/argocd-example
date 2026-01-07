@@ -1,0 +1,24 @@
+{{/* RBAC Resources */}}
+{{ include "app.serviceaccount" . }}
+{{ include "app.role" . }}
+{{ include "app.rolebinding" . }}
+
+{{/* Storage & Configuration */}}
+{{ include "app.pvc" . }}
+{{ include "app.configmap" . }}
+{{ include "app.secret" . }}
+{{ include "app.env" . }}
+
+{{/* Workloads */}}
+{{ include "app.deployment" . }}
+{{ include "app.statefulset" . }}
+
+{{/* Networking */}}
+{{ include "app.service" . }}
+{{ include "app.servicemonitor" . }}
+{{ include "app.ingress" . }}
+{{ include "app.networkpolicy" . }}
+
+{{/* Autoscaling & Availability */}}
+{{ include "app.hpa" . }}
+{{ include "app.pdb" . }}

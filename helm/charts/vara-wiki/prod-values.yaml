@@ -1,0 +1,12 @@
+components:
+  app:
+    image: "ghcr.io/xxx/vara-wiki/vara-wiki-app"
+    tag: "master-2ff4c8c-20251210174505"
+    ingress:
+      root:
+        host: www.example.com
+        annotations:
+          nginx.ingress.kubernetes.io/server-alias: www.example.com
+    autoscaling:
+      enabled: true
+      minReplicas: 2

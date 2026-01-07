@@ -1,0 +1,16 @@
+apiVersion: v2
+name: {sensative}
+description: Shared Helm library chart with reusable templates for Kubernetes resources
+type: library
+version: 1.0.0
+
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com
+
+# Keywords for discoverability
+keywords:
+  - library
+  - kubernetes
+  - helm
+  - argocd

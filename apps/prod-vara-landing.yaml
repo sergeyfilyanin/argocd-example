@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prod-vara-landing
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:gear-foundation/argocd.git
+    targetRevision: HEAD
+    path: helm/charts/vara-landing
+    helm:
+      valueFiles:
+        - ../../../helm/charts/vara-landing/prod-values.yaml
+        - ../../../environments/prod.yaml
+        - ../../../helm/global-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod-vara-landing
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+      - PrunePropagationPolicy=foreground
+  info:
+    - name: GitHub Source
+      value: https://github.com/gear-foundation/vara-network-site
+    - name: GitHub Actions
+      value: https://github.com/gear-foundation/vara-network-site/actions

@@ -1,0 +1,162 @@
+# =============================================================================
+# ArgoCD Repository .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# SECURITY: Never commit sensitive files
+# -----------------------------------------------------------------------------
+
+# Secret files
+*.secret
+*.secret.yaml
+*.secret.yml
+*-secrets.yaml
+*-secrets.yml
+secrets/
+.secrets/
+
+# Encrypted files (before encryption)
+*.dec.yaml
+*.dec.yml
+*.decrypted.yaml
+*.decrypted.yml
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+*.env.local
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+*.crt
+!*.crt.example
+
+# Kubeconfig and cloud credentials
+kubeconfig*
+.kube/
+.aws/
+.gcloud/
+credentials.json
+service-account*.json
+
+# SOPS age keys
+keys.txt
+*.agekey
+
+# Sealed Secrets private keys
+sealed-secrets-key.yaml
+
+# -----------------------------------------------------------------------------
+# Helm
+# -----------------------------------------------------------------------------
+
+# Helm chart dependencies (downloaded)
+**/charts/*.tgz
+*.tgz
+
+# Helm lock files (optional - some prefer to commit these)
+# Chart.lock
+
+# Helm debug output
+debug-*.yaml
+
+# -----------------------------------------------------------------------------
+# IDE and Editor
+# -----------------------------------------------------------------------------
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+\#*\#
+.\#*
+
+# -----------------------------------------------------------------------------
+# OS Generated
+# -----------------------------------------------------------------------------
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# -----------------------------------------------------------------------------
+# Python (for generate_applications.py)
+# -----------------------------------------------------------------------------
+
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+ENV/
+.pytest_cache/
+*.egg-info/
+
+# -----------------------------------------------------------------------------
+# Temporary and Build
+# -----------------------------------------------------------------------------
+
+*.log
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+
+# Build output
+dist/
+build/
+out/
+
+# -----------------------------------------------------------------------------
+# Testing
+# -----------------------------------------------------------------------------
+
+# Test output
+coverage/
+.coverage
+htmlcov/
+test-results/
+junit*.xml
+
+# -----------------------------------------------------------------------------
+# Kubernetes
+# -----------------------------------------------------------------------------
+
+# Generated manifests (if templated locally)
+rendered/
+manifests-generated/
+
+# Kustomize build output
+kustomize-build/
+

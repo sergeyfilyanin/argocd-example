@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  accounts.admin: apiKey, login
+  admin.enabled: "true"
+  users.anonymous.enabled: "false"
+  
+  # Dex OIDC configuration
+  # IMPORTANT: clientID and clientSecret should be managed via argocd-secret
+  # See: https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/
+  dex.config: |
+    logger:
+      level: debug
+    connectors:
+    - type: google
+      id: google
+      name: Google
+      config:
+        # OAuth credentials - managed via argocd-secret, not here
+        clientID: $dex.google.clientID
+        clientSecret: $dex.google.clientSecret
+        userIDKey: email
+        hostedDomains:
+        - example.com  # Replace with your organization domain
+  
+  url: https://argocd.example.com  # Replace with your ArgoCD URL

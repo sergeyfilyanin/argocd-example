@@ -1,0 +1,256 @@
+# CI Workflow for ArgoCD Repository
+# Validates Helm charts, YAML syntax, and security on every PR
+
+name: Validate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  HELM_VERSION: '3.14.0'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # ==========================================================================
+  # Pre-commit hooks
+  # ==========================================================================
+  pre-commit:
+    name: Pre-commit Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.0
+
+  # ==========================================================================
+  # Helm Chart Validation
+  # ==========================================================================
+  helm-lint:
+    name: Helm Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Update Helm dependencies
+        run: |
+          for chart in helm/charts/*/; do
+            echo "Updating dependencies for $chart"
+            helm dependency update "$chart" || true
+          done
+
+      - name: Lint all charts
+        run: |
+          for chart in helm/charts/*/; do
+            echo "Linting $chart"
+            helm lint "$chart" --strict || exit 1
+          done
+
+  # ==========================================================================
+  # Helm Template Rendering
+  # ==========================================================================
+  helm-template:
+    name: Helm Template
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [dev, stg, prod]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Update dependencies
+        run: |
+          for chart in helm/charts/*/; do
+            helm dependency update "$chart" || true
+          done
+
+      - name: Template charts for ${{ matrix.environment }}
+        run: |
+          for chart in helm/charts/*/; do
+            chart_name=$(basename "$chart")
+            values_file="${chart}${{ matrix.environment }}-values.yaml"
+            
+            if [ -f "$values_file" ]; then
+              echo "Templating $chart_name for ${{ matrix.environment }}"
+              helm template "${{ matrix.environment }}-${chart_name}" "$chart" \
+                -f "$values_file" \
+                -f "environments/${{ matrix.environment }}.yaml" \
+                -f "helm/global-values.yaml" \
+                --debug > /dev/null || exit 1
+            fi
+          done
+
+  # ==========================================================================
+  # Kubernetes Manifest Validation
+  # ==========================================================================
+  kubeconform:
+    name: Kubeconform
+    runs-on: ubuntu-latest
+    needs: helm-template
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Install kubeconform
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/
+
+      - name: Update dependencies
+        run: |
+          for chart in helm/charts/*/; do
+            helm dependency update "$chart" || true
+          done
+
+      - name: Validate rendered manifests
+        run: |
+          for chart in helm/charts/*/; do
+            chart_name=$(basename "$chart")
+            values_file="${chart}prod-values.yaml"
+            
+            if [ -f "$values_file" ]; then
+              echo "Validating $chart_name"
+              helm template "prod-${chart_name}" "$chart" \
+                -f "$values_file" \
+                -f "environments/prod.yaml" \
+                -f "helm/global-values.yaml" 2>/dev/null | \
+              kubeconform -summary -strict \
+                -ignore-missing-schemas \
+                -kubernetes-version 1.28.0 || exit 1
+            fi
+          done
+
+  # ==========================================================================
+  # Security Scanning
+  # ==========================================================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          skip-dirs: '.git'
+
+      - name: Detect secrets with Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ==========================================================================
+  # Application Generator
+  # ==========================================================================
+  generate-apps:
+    name: Verify Generated Apps
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install ruyaml
+
+      - name: Run generator
+        run: python etc/generate_applications.py
+
+      - name: Check for uncommitted changes
+        run: |
+          if [[ -n $(git status --porcelain apps/) ]]; then
+            echo "::error::Generated apps are out of sync! Run 'python etc/generate_applications.py' and commit the changes."
+            git diff apps/
+            exit 1
+          fi
+
+  # ==========================================================================
+  # JSON Schema Validation
+  # ==========================================================================
+  schema-validation:
+    name: Values Schema Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install jsonschema
+        run: pip install jsonschema pyyaml
+
+      - name: Validate values against schema
+        run: |
+          python << 'EOF'
+          import json
+          import yaml
+          from jsonschema import validate, ValidationError
+          from pathlib import Path
+
+          schema_path = Path("helm/lib/gearLib/values.schema.json")
+          if not schema_path.exists():
+              print("Schema not found, skipping validation")
+              exit(0)
+
+          with open(schema_path) as f:
+              schema = json.load(f)
+
+          errors = []
+          for values_file in Path("helm/charts").glob("*/values.yaml"):
+              with open(values_file) as f:
+                  values = yaml.safe_load(f)
+              
+              # Add default environment for validation
+              values['environment'] = 'dev'
+              
+              try:
+                  validate(instance=values, schema=schema)
+                  print(f"✅ {values_file}")
+              except ValidationError as e:
+                  errors.append(f"❌ {values_file}: {e.message}")
+                  print(f"❌ {values_file}: {e.message}")
+
+          if errors:
+              exit(1)
+          EOF
+
